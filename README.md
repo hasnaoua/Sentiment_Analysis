@@ -1,2 +1,2 @@
-# Sentiment_Analysis
-implement Sentiment_Analsys model from scartch and compare it with previous stats of art
+# Sentiment Analysis
+Implement a Sentiment Analysis model from scratch and compare it with previous state-of-the-art models.
