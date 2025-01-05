@@ -141,6 +141,40 @@ def create_tfidf(df, max_features=5000):
     tfidf_matrix = tfidf.fit_transform(df['processed_text'])
     return tfidf_matrix, tfidf
 
+def create_balanced_dataset(df, n_samples=20491): 
+    """ 
+    Create a balanced dataset with specified number of samples 
+    """ 
+    # Convert sentiment to numeric 
+    sentiment_map = { 
+        'negative': 0, 
+        'neutral': 1, 
+        'positive': 2 
+    } 
+    df['label_sentiment'] = df['sentiment'].map(sentiment_map) 
+     
+    # Calculate samples per class 
+    samples_per_class = n_samples // 3 
+     
+    # Get balanced data for each class 
+    balanced_dfs = [] 
+    for label in range(3): 
+        class_df = df[df['label_sentiment'] == label] 
+        if len(class_df) > samples_per_class: 
+            balanced_dfs.append(class_df.sample(n=samples_per_class, 
+random_state=42)) 
+        else: 
+            # If we don't have enough samples, oversample 
+            balanced_dfs.append(class_df.sample(n=samples_per_class, 
+replace=True, random_state=42)) 
+     
+    # Combine balanced datasets 
+    balanced_df = pd.concat(balanced_dfs) 
+     
+    # Shuffle the final dataset 
+    return balanced_df.sample(frac=1, random_state=42)
+
+
 def data_description(df):
     """
     Visualizes the distribution of ratings in a DataFrame.
