@@ -9,7 +9,6 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import LabelEncoder
 
 # Download required NLTK data
 nltk.download('punkt')
@@ -28,6 +27,14 @@ def load_data(file_path):
     """
     data = pd.read_csv(file_path, encoding="utf-8", encoding_errors="replace")
     return data
+
+def label_sentiment(rating):
+    if rating <= 2:
+        return 'negative'
+    elif rating == 3:
+        return 'neutral'
+    else:
+        return 'positive'
 
 def preprocess_data(df_data):
     """
@@ -59,6 +66,7 @@ def preprocess_data(df_data):
     df_copy['Review'] = df_copy['Review'].apply(lambda x: ' '.join(x.split()))
     df_copy = df_copy[df_copy['Review'].str.len() > 0]
     df_copy.reset_index(drop=True, inplace=True)
+    df_copy['sentiment'] = df_copy['Rating'].apply(label_sentiment)
     return df_copy
 
 def tokenize_text(df):
