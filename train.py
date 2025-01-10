@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, AdamW 
 from sklearn.metrics import accuracy_score, classification_report 
 from sklearn.model_selection import train_test_split 
+from tqdm import tqdm
 
 from preprocess_text import *
 
@@ -55,7 +56,7 @@ def create_dataloader(cleaned_data, tokenizer, batch_size, max_len=128, shuffle=
 def train_sentiment_model(df, test_size=0.2, num_epochs=3, batch_size=16, learning_rate=2e-5):
     # Create a balanced dataset
     print("Creating balanced dataset...")
-    balanced_df = create_balanced_dataset(df, n_samples=5000)
+    balanced_df = create_balanced_dataset(df, n_samples=20491)
     print(f"Columns after balancing: {balanced_df.columns}")  # Debugging line
     print(f"Class distribution:\n{balanced_df['label_sentiment'].value_counts()}")
 
@@ -105,10 +106,11 @@ def train_sentiment_model(df, test_size=0.2, num_epochs=3, batch_size=16, learni
     print(f"Training on {device}")
     for epoch in range(num_epochs):
         model.train()
-        total_loss = 0
+        train_loss = 0
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
+        pbar = tqdm(train_loader, unit="batches")
 
-        for batch_idx, batch in enumerate(train_loader):
+        for batch in pbar:
             optimizer.zero_grad()
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
@@ -116,17 +118,15 @@ def train_sentiment_model(df, test_size=0.2, num_epochs=3, batch_size=16, learni
 
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
-            total_loss += loss.item()
+            train_loss += loss.item()
 
             loss.backward()
             optimizer.step()
 
-            if (batch_idx + 1) % 10 == 0:
-                print(f"Batch {batch_idx + 1}/{len(train_loader)}, Loss: {loss.item():.4f}")
-
         # Evaluation
         model.eval()
         test_preds, test_true = [], []
+        valid_loss = 0
 
         print("\nEvaluating...")
         with torch.no_grad():
@@ -136,6 +136,8 @@ def train_sentiment_model(df, test_size=0.2, num_epochs=3, batch_size=16, learni
                 labels = batch['labels'].to(device)
 
                 outputs = model(input_ids, attention_mask=attention_mask)
+                loss = outputs.loss
+                valid_loss += loss.item()
                 preds = torch.argmax(outputs.logits, dim=1)
 
                 test_preds.extend(preds.cpu().numpy())
@@ -143,7 +145,8 @@ def train_sentiment_model(df, test_size=0.2, num_epochs=3, batch_size=16, learni
 
         # Calculate metrics
         accuracy = accuracy_score(test_true, test_preds)
-        print(f'Average training loss: {total_loss / len(train_loader):.4f}')
+        print(f'Average training loss: {train_loss / len(train_loader):.4f}')
+        print(f"Averge validation loss: {valid_loss / len(test_loader):.4f}")
         print(f'Test Accuracy: {accuracy:.4f}')
 
         # Detailed classification report
